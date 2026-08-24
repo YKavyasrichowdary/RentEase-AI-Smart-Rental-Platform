@@ -19,7 +19,7 @@ export function ClosingCta() {
 
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <Button size="lg">
-            <Link href="/signup">Create your account</Link>
+            <Link href="/auth/signup">Create your account</Link>
           </Button>
 
           <Button size="lg" variant="outline">

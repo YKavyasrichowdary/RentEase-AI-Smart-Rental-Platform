@@ -90,7 +90,7 @@ export default function SignInPage() {
         <>
           New to RentEase?{" "}
           <Link
-            href="/signup"
+            href="/auth/signup"
             className="font-semibold text-primary"
           >
             Create an account
