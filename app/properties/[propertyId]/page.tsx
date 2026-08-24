@@ -1,22 +1,11 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 
-import { Section } from "@/components/rentease/Section";
 import { getProperty, formatINR } from "@/lib/rentease-data";
 
-import { PropertyGallery } from "@/components/rentease/property-detail/PropertyGallery";
-import { PropertyInfo } from "@/components/rentease/property-detail/PropertyInfo";
-import { PropertySpecs } from "@/components/rentease/property-detail/PropertySpecs";
-import { PropertySection } from "@/components/rentease/property-detail/PropertySection";
-import { LandlordInfo } from "@/components/rentease/property-detail/LandlordInfo";
-import { PropertyLocation } from "@/components/rentease/property-detail/PropertyLocation";
-import { TrustScorePanel } from "@/components/rentease/property-detail/TrustScorePanel";
-import { RentAnalysis } from "@/components/rentease/property-detail/RentAnalysis";
-import { PropertyActions } from "@/components/rentease/property-detail/PropertyActions";
+import PropertyDetailClient from "@/app/properties/[propertyId]/PropertyDetailClient";
 
-interface PropertyDetailPageProps {
+interface PropertyPageProps {
   params: Promise<{
     propertyId: string;
   }>;
@@ -24,8 +13,9 @@ interface PropertyDetailPageProps {
 
 export async function generateMetadata({
   params,
-}: PropertyDetailPageProps): Promise<Metadata> {
+}: PropertyPageProps): Promise<Metadata> {
   const { propertyId } = await params;
+
   const property = getProperty(propertyId);
 
   if (!property) {
@@ -59,9 +49,9 @@ export async function generateMetadata({
   };
 }
 
-export default async function PropertyDetailPage({
+export default async function PropertyPage({
   params,
-}: PropertyDetailPageProps) {
+}: PropertyPageProps) {
   const { propertyId } = await params;
 
   const property = getProperty(propertyId);
@@ -71,60 +61,6 @@ export default async function PropertyDetailPage({
   }
 
   return (
-    <Section className="pt-8">
-      <Link
-        href="/properties"
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
-      >
-        <ArrowLeft className="size-4" />
-        All properties
-      </Link>
-
-      <div className="mt-6 grid gap-8 lg:grid-cols-[1.6fr_1fr]">
-        <div>
-          <PropertyGallery property={property} />
-
-          <PropertyInfo property={property} />
-
-          <PropertySpecs property={property} />
-
-          <PropertySection title="Description">
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              {property.description}
-            </p>
-          </PropertySection>
-
-          <PropertySection title="Amenities">
-            <ul className="flex flex-wrap gap-2">
-              {property.amenities.map((amenity) => (
-                <li
-                  key={amenity}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-medium"
-                >
-                  <span className="text-primary">✓</span>
-                  {amenity}
-                </li>
-              ))}
-            </ul>
-          </PropertySection>
-
-          <PropertySection title="Landlord information">
-            <LandlordInfo landlord={property.landlord} />
-          </PropertySection>
-
-          <PropertySection title="Location">
-            <PropertyLocation property={property} />
-          </PropertySection>
-        </div>
-
-        <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">
-          <TrustScorePanel property={property} />
-
-          <RentAnalysis property={property} />
-
-          <PropertyActions property={property} />
-        </aside>
-      </div>
-    </Section>
+    <PropertyDetailClient property={property} />
   );
 }
