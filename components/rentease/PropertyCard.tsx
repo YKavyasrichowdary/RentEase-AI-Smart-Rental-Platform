@@ -82,6 +82,7 @@ export function PropertyCard({
               : "Save to favourites"
           }
           aria-pressed={saved}
+          suppressHydrationWarning
           className="absolute right-3 top-3 grid size-8 place-items-center rounded-full border border-border/70 bg-card/95 text-muted-foreground shadow-card transition-colors hover:text-warm"
         >
           <Heart

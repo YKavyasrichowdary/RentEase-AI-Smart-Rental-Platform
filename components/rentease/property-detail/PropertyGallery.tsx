@@ -42,6 +42,7 @@ export function PropertyGallery({
             onClick={() => setActive(index)}
             aria-label={`View photo ${index + 1}`}
             aria-pressed={active === index}
+            suppressHydrationWarning
             className={cn(
               "shrink-0 overflow-hidden rounded-lg border-2 transition-colors",
               active === index

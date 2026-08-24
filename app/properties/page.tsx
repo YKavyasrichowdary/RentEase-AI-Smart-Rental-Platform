@@ -77,6 +77,7 @@ export default function PropertiesPage() {
               onClick={() =>
                 setCity(cityName)
               }
+              suppressHydrationWarning
               className={cn(
                 "rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors",
                 city === cityName
@@ -98,6 +99,7 @@ export default function PropertiesPage() {
               onClick={() =>
                 setSort(sortOption)
               }
+              suppressHydrationWarning
               className={cn(
                 "rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors",
                 sort === sortOption

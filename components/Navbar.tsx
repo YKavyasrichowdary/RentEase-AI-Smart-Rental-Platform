@@ -51,6 +51,7 @@ export function Navbar() {
           <button
             type="button"
             aria-label="Notifications"
+            suppressHydrationWarning
             className="relative grid size-10 place-items-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/70 transition-colors"
           >
             <Bell className="size-5" />

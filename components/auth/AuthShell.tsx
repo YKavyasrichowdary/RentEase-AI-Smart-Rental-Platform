@@ -182,6 +182,7 @@ export function RoleToggle({
             type="button"
             onClick={() => onChange(role.key)}
             aria-pressed={selected}
+            suppressHydrationWarning
             className={
               "rounded-xl border p-4 text-left transition-colors " +
               (selected

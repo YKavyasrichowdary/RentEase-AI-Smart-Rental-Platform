@@ -247,6 +247,7 @@ export function SearchFilters({
       <button
         type="button"
         onClick={onToggleAdvanced}
+        suppressHydrationWarning
         className="flex w-full items-center gap-2 text-sm font-medium text-primary"
       >
         <SlidersHorizontal className="size-4" />
