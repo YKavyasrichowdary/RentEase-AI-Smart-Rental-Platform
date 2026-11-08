@@ -61,7 +61,7 @@ model Property {
   bedrooms   Int
   bathrooms  Int
   furnishing String
-  amentities String[]
+  amenities String[] @default([])
 
   status PropertyStatus @default(DRAFT)
 

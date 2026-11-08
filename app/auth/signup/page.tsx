@@ -134,10 +134,24 @@ export default function SignUpPage() {
         }),
       });
 
-      const data = await res.json();
+      let data: any = {};
+      const contentType = res.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        try {
+          data = await res.json();
+        } catch {
+          data = {};
+        }
+      }
 
       if (!res.ok) {
-        const errorMsg = data.error || data.message || "Failed to create account.";
+        const errorMsg = data?.error || data?.message || `Failed to create account (${res.status}).`;
+        if (res.status === 409 || errorMsg.toLowerCase().includes("already exists")) {
+          setErrors((current) => ({
+            ...current,
+            email: "An account with this email already exists.",
+          }));
+        }
         toast.error("Sign up failed", {
           description: errorMsg,
         });
@@ -203,9 +217,9 @@ export default function SignUpPage() {
       >
         {/* Role */}
         <RoleToggle
-          value={role}
-          onChange={setRole}
-        />
+  value={role}
+  onChange={setRole}
+     />
 
         {/* Full name */}
         <div className="space-y-2">
@@ -242,11 +256,20 @@ export default function SignUpPage() {
               onChange={set("email")}
               placeholder="you@example.com"
               autoComplete="email"
+              aria-invalid={!!errors.email}
             />
 
             {errors.email ? (
               <p className="text-xs text-destructive">
-                {errors.email}
+                {errors.email}{" "}
+                {errors.email.includes("already exists") ? (
+                  <Link
+                    href="/auth/signin"
+                    className="font-semibold text-primary underline"
+                  >
+                    Sign in
+                  </Link>
+                ) : null}
               </p>
             ) : null}
           </div>

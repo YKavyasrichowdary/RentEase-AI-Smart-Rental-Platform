@@ -240,11 +240,12 @@ export async function POST(request: Request) {
   }
 }
 
+
 export async function GET() {
   try {
     const properties = await prisma.property.findMany({
       where: {
-        status: { in: ["PUBLISHED", "DRAFT"] },
+        status: "PUBLISHED",
       },
       orderBy: {
         createdAt: "desc",
@@ -274,49 +275,37 @@ export async function GET() {
       locality: property.locality,
       latitude: property.latitude,
       longitude: property.longitude,
-      rent:
-        typeof property.rent === "object" &&
-        property.rent &&
-        "toNumber" in property.rent
-          ? property.rent.toNumber()
-          : Number(property.rent),
+      rent: Number(property.rent),
       area: property.area,
       bedrooms: property.bedrooms,
       bathrooms: property.bathrooms,
       furnishing: property.furnishing,
+      amenities: property.amenities,
       status: property.status,
-
       images: property.images.map((image) => ({
         id: image.id,
         url: image.url,
         storageKey: image.storageKey,
         sortOrder: image.sortOrder,
       })),
-
       owner: {
-        id: property.owner?.id ?? "unknown",
-        name: property.owner?.name ?? "Landlord",
-        createdAt: property.owner?.createdAt ?? new Date().toISOString(),
+        id: property.owner.id,
+        name: property.owner.name,
+        createdAt: property.owner.createdAt,
       },
-
       createdAt: property.createdAt,
       updatedAt: property.updatedAt,
     }));
-
-    if (formattedProperties.length === 0) {
-      return NextResponse.json({
-        properties: getFallbackProperties(),
-      });
-    }
 
     return NextResponse.json({
       properties: formattedProperties,
     });
   } catch (error) {
-    console.error("Fetch properties error (using fallback static data):", error);
+    console.error("Fetch properties error:", error);
 
-    return NextResponse.json({
-      properties: getFallbackProperties(),
-    });
+    return NextResponse.json(
+      { error: "Unable to fetch properties." },
+      { status: 500 },
+    );
   }
 }

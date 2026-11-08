@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { AlertCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ import {
   RoleToggle,
 } from "@/components/auth/AuthShell";
 
-type Role = "tenant" | "landlord";
+type Role = "tenant" | "landlord" | "admin";
 
 type Errors = {
   email?: string;
@@ -37,6 +37,9 @@ export default function SignInPage() {
   const [errors, setErrors] =
     useState<Errors>({});
 
+  const [authError, setAuthError] =
+    useState<string | null>(null);
+
   const [loading, setLoading] =
     useState(false);
 
@@ -44,6 +47,7 @@ export default function SignInPage() {
     event: React.FormEvent<HTMLFormElement>,
   ) => {
     event.preventDefault();
+    setAuthError(null);
 
     const next: Errors = {};
 
@@ -78,13 +82,40 @@ export default function SignInPage() {
         }),
       });
 
-      const data = await res.json();
+      let data: any = {};
+      const contentType = res.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        try {
+          data = await res.json();
+        } catch {
+          data = {};
+        }
+      }
 
       if (!res.ok) {
-        const errorMsg = data.message || data.error || "Failed to sign in.";
-        toast.error("Sign in failed", {
-          description: errorMsg,
-        });
+        if (
+          res.status === 401 ||
+          res.status === 403 ||
+          data?.message?.toLowerCase().includes("invalid email or password") ||
+          data?.message?.toLowerCase().includes("unauthorized")
+        ) {
+          const unauthorizedMsg = "Invalid email or password";
+          setAuthError(unauthorizedMsg);
+          toast.error("Sign in failed", {
+            description: unauthorizedMsg,
+          });
+        } else if (res.status === 404) {
+          const notFoundMsg = "Authentication service endpoint not found (404).";
+          setAuthError(notFoundMsg);
+          toast.error("Sign in failed", {
+            description: notFoundMsg,
+          });
+        } else {
+          const errorMsg = data?.message || data?.error || `Failed to sign in (${res.status}).`;
+          toast.error("Sign in failed", {
+            description: errorMsg,
+          });
+        }
         setLoading(false);
         return;
       }
@@ -93,11 +124,18 @@ export default function SignInPage() {
         description: `Welcome back, ${data.user?.name || email}!`,
       });
 
-      const targetRole = (data.user?.role || role.toUpperCase()).toLowerCase();
+      const targetRole = (
+        data.user?.role || role.toUpperCase()
+      ).toLowerCase();
+
+      const dashboardRoutes: Record<string, string> = {
+        tenant: "/dashboard/tenant",
+        landlord: "/dashboard/landlord",
+        admin: "/dashboard/admin",
+      };
+
       router.push(
-        targetRole === "landlord"
-          ? "/dashboard/landlord"
-          : "/dashboard/tenant",
+        dashboardRoutes[targetRole] || "/auth/signin",
       );
       router.refresh();
     } catch (error) {
@@ -131,12 +169,23 @@ export default function SignInPage() {
       >
         {/* Role */}
         <RoleToggle
-          value={role}
-          onChange={setRole}
-        />
+  value={role}
+  onChange={setRole}
+  includeAdmin
+/>
 
         {/* Email */}
         <div className="space-y-2">
+          {authError ? (
+            <div
+              role="alert"
+              className="flex items-center gap-2 rounded-xl border border-destructive/20 bg-destructive/10 px-3.5 py-2.5 text-sm font-medium text-destructive"
+            >
+              <AlertCircle className="size-4 shrink-0" />
+              <p>{authError}</p>
+            </div>
+          ) : null}
+
           <Label htmlFor="email">
             Email
           </Label>
@@ -148,6 +197,7 @@ export default function SignInPage() {
             value={email}
             onChange={(event) => {
               setEmail(event.target.value);
+              setAuthError(null);
 
               setErrors((current) => ({
                 ...current,
@@ -155,7 +205,7 @@ export default function SignInPage() {
               }));
             }}
             placeholder="you@example.com"
-            aria-invalid={!!errors.email}
+            aria-invalid={!!errors.email || !!authError}
           />
 
           {errors.email ? (
@@ -180,6 +230,7 @@ export default function SignInPage() {
               setPassword(
                 event.target.value,
               );
+              setAuthError(null);
 
               setErrors((current) => ({
                 ...current,
@@ -187,7 +238,7 @@ export default function SignInPage() {
               }));
             }}
             placeholder="••••••••"
-            aria-invalid={!!errors.password}
+            aria-invalid={!!errors.password || !!authError}
           />
 
           {errors.password ? (

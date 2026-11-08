@@ -46,10 +46,7 @@ export function AuthShell({
     <div className="mx-auto grid w-full max-w-6xl gap-10 px-5 py-14 sm:px-8 lg:grid-cols-[1fr_1.05fr] lg:items-center lg:py-20">
       {/* Branding / Benefits */}
       <motion.aside
-        initial={{
-          opacity: 0,
-          y: 18,
-        }}
+        initial={false}
         animate={{
           opacity: 1,
           y: 0,
@@ -57,7 +54,7 @@ export function AuthShell({
         transition={{
           duration: 0.5,
         }}
-        className="mesh-lavender order-2 rounded-3xl border border-border bg-card p-8 shadow-card lg:order-1 lg:p-10"
+        className="mesh-lavender order-2 rounded-3xl border border-border bg-card p-8 shadow-card lg:order-1 lg:p-10 animate-in fade-in-50 duration-500"
       >
         <Link
           href="/"
@@ -109,10 +106,7 @@ export function AuthShell({
 
       {/* Auth Form */}
       <motion.div
-        initial={{
-          opacity: 0,
-          y: 18,
-        }}
+        initial={false}
         animate={{
           opacity: 1,
           y: 0,
@@ -121,7 +115,7 @@ export function AuthShell({
           duration: 0.5,
           delay: 0.1,
         }}
-        className="surface-panel order-1 p-7 sm:p-9 lg:order-2"
+        className="surface-panel order-1 p-7 sm:p-9 lg:order-2 animate-in fade-in-50 duration-500"
       >
         <h1 className="font-display text-2xl font-semibold">
           {title}
@@ -143,15 +137,22 @@ export function AuthShell({
   );
 }
 
-type Role = "tenant" | "landlord";
-
-interface RoleToggleProps {
-  value: Role;
-  onChange: (value: Role) => void;
-}
+type PublicRole = "tenant" | "landlord";
+type SignInRole = PublicRole | "admin";
+type RoleToggleProps =
+  | {
+      value: PublicRole;
+      onChange: (value: PublicRole) => void;
+      includeAdmin?: false;
+    }
+  | {
+      value: SignInRole;
+      onChange: (value: SignInRole) => void;
+      includeAdmin: true;
+    };
 
 const ROLES: {
-  key: Role;
+  key: SignInRole;
   label: string;
   body: string;
 }[] = [
@@ -165,22 +166,46 @@ const ROLES: {
     label: "I'm a Landlord",
     body: "List properties and review requests.",
   },
+  {
+    key: "admin",
+    label: "I'm an Admin",
+    body: "Verify listings and manage RentEase.",
+  },
 ];
 
 export function RoleToggle({
   value,
   onChange,
+  includeAdmin = false,
 }: RoleToggleProps) {
+  const visibleRoles = includeAdmin
+    ? ROLES
+    : ROLES.filter((role) => role.key !== "admin");
+
+  const handleRoleChange = (role: SignInRole) => {
+    if (role === "admin" && !includeAdmin) {
+      return;
+    }
+
+    onChange(role as PublicRole);
+  };
+
   return (
-    <div className="grid grid-cols-2 gap-3">
-      {ROLES.map((role) => {
+    <div
+      className={`grid gap-3 ${
+        includeAdmin
+          ? "grid-cols-1 sm:grid-cols-3"
+          : "grid-cols-2"
+      }`}
+    >
+      {visibleRoles.map((role) => {
         const selected = value === role.key;
 
         return (
           <button
             key={role.key}
             type="button"
-            onClick={() => onChange(role.key)}
+            onClick={() => handleRoleChange(role.key)}
             aria-pressed={selected}
             suppressHydrationWarning
             className={
