@@ -273,19 +273,25 @@ export async function GET() {
         createdAt: "desc",
       },
       include: {
-        images: {
-          orderBy: {
-            sortOrder: "asc",
-          },
-        },
-        owner: {
-          select: {
-            id: true,
-            name: true,
-            createdAt: true,
-          },
-        },
-      },
+  images: {
+    orderBy: {
+      sortOrder: "asc",
+    },
+  },
+  owner: {
+    select: {
+      id: true,
+      name: true,
+      createdAt: true,
+    },
+  },
+  assessments: {
+    orderBy: {
+      createdAt: "desc",
+    },
+    take: 1,
+  },
+},
     });
 
     const formattedProperties = properties.map((property) => ({
@@ -317,6 +323,23 @@ export async function GET() {
       },
       createdAt: property.createdAt,
       updatedAt: property.updatedAt,
+      latestAssessment: property.assessments[0]
+  ? {
+      trustScore: property.assessments[0].trustScore,
+      signals: property.assessments[0].signals,
+      estimatedRentLow: Number(
+        property.assessments[0].estimatedRentLow
+      ),
+      estimatedRentMid: Number(
+        property.assessments[0].estimatedRentMid
+      ),
+      estimatedRentHigh: Number(
+        property.assessments[0].estimatedRentHigh
+      ),
+      propertyUpdatedAt:
+        property.assessments[0].propertyUpdatedAt,
+    }
+  : null,
     }));
 
     return NextResponse.json({

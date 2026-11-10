@@ -47,7 +47,7 @@ export function DashboardShell({
         {actions}
       </div>
 
-      <nav className="mt-8 flex gap-1 overflow-x-auto border-b border-border pb-px">
+      <nav className="mt-8 flex gap-1 overflow-x-auto border-b border-border pb-px md:hidden">
         {nav.map((item) => (
           <Link
             key={item.label}

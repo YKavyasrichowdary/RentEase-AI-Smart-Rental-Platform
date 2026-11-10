@@ -114,6 +114,10 @@ export default function PropertiesPage() {
   const [sort, setSort] =
     useState<SortOption>("Recommended");
 
+  const [userRole, setUserRole] = useState<string | null>(null);
+const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+const [savingId, setSavingId] = useState<string | null>(null);
+
   useEffect(() => {
     async function fetchProperties() {
       try {
@@ -149,6 +153,44 @@ export default function PropertiesPage() {
 
     fetchProperties();
   }, []);
+  useEffect(() => {
+  async function fetchTenantSavedProperties() {
+    try {
+      const userResponse = await fetch("/api/auth/me", {
+        cache: "no-store",
+      });
+
+      const userData = await userResponse.json();
+      const role = userData.user?.role ?? null;
+
+      setUserRole(role);
+
+      if (role !== "TENANT") return;
+
+      const savedResponse = await fetch("/api/saved-properties", {
+        cache: "no-store",
+      });
+
+      if (!savedResponse.ok) {
+        throw new Error("Unable to load saved property IDs");
+      }
+
+      const savedData = await savedResponse.json();
+
+      setSavedIds(
+        new Set(
+          (savedData.savedProperties ?? []).map(
+            (item: { property: { id: string } }) => item.property.id
+          )
+        )
+      );
+    } catch (error) {
+      console.error("Saved properties initialization error:", error);
+    }
+  }
+
+  fetchTenantSavedProperties();
+}, []);
 
   const results = useMemo(() => {
     const list = properties.filter(
@@ -172,6 +214,50 @@ export default function PropertiesPage() {
         return list;
     }
   }, [properties, city, sort]);
+
+  async function handleSaveToggle(propertyId: string) {
+  if (userRole !== "TENANT" || savingId) return;
+
+  const isSaved = savedIds.has(propertyId);
+
+  try {
+    setSavingId(propertyId);
+
+    const response = await fetch(
+      `/api/saved-properties/${propertyId}`,
+      {
+        method: isSaved ? "DELETE" : "POST",
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "Unable to update saved property");
+    }
+
+    setSavedIds((current) => {
+      const updated = new Set(current);
+
+      if (isSaved) {
+        updated.delete(propertyId);
+      } else {
+        updated.add(propertyId);
+      }
+
+      return updated;
+    });
+  } catch (error) {
+    console.error("Save property error:", error);
+    alert(
+      error instanceof Error
+        ? error.message
+        : "Unable to update saved property"
+    );
+  } finally {
+    setSavingId(null);
+  }
+}
 
   return (
     <Section>
@@ -265,10 +351,14 @@ export default function PropertiesPage() {
               {results.map(
                 (property, index) => (
                   <PropertyCard
-                    key={property.id}
-                    property={adaptApiPropertyToCardProperty(property)}
-                    index={index}
-                  />
+  key={property.id}
+  property={adaptApiPropertyToCardProperty(property)}
+  index={index}
+  canSave={userRole === "TENANT"}
+  saved={savedIds.has(property.id)}
+  saving={savingId === property.id}
+  onSaveToggle={handleSaveToggle}
+/>
                 ),
               )}
             </div>

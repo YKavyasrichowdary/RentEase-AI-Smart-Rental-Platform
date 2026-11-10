@@ -1,8 +1,9 @@
+
 "use client";
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { motion } from "framer-motion";
 import {
   Bath,
@@ -10,26 +11,33 @@ import {
   Heart,
   MapPin,
   Ruler,
+  Loader2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatINR, type Property } from "@/lib/rentease-data";
-import { TrustBadge } from "./TrustScore";
+import { TrustBadge } from "@/components/rentease/TrustScore";
 
 interface PropertyCardProps {
   property: Property;
   index?: number;
   variant?: "default" | "wide";
+  saved?: boolean;
+  canSave?: boolean;
+  saving?: boolean;
+  onSaveToggle?: (propertyId: string) => void;
 }
 
 export function PropertyCard({
   property,
   index = 0,
   variant = "default",
+  saved = false,
+  canSave = false,
+  saving = false,
+  onSaveToggle,
 }: PropertyCardProps) {
-  const [saved, setSaved] = useState(false);
-
   return (
     <motion.article
       initial={{ opacity: 0, y: 18 }}
@@ -43,14 +51,14 @@ export function PropertyCard({
         "group hover-lift flex overflow-hidden rounded-2xl border border-border bg-card shadow-card",
         variant === "wide"
           ? "flex-col sm:flex-row"
-          : "flex-col",
+          : "flex-col"
       )}
     >
       {/* Property Image */}
       <div
         className={cn(
           "relative overflow-hidden bg-surface-strong",
-          variant === "wide" ? "sm:w-64 sm:shrink-0" : "",
+          variant === "wide" ? "sm:w-64 sm:shrink-0" : ""
         )}
       >
         <Image
@@ -63,7 +71,7 @@ export function PropertyCard({
             "w-full object-cover transition-transform duration-700 group-hover:scale-[1.04]",
             variant === "wide"
               ? "h-44 sm:h-full"
-              : "h-48",
+              : "h-48"
           )}
         />
 
@@ -72,26 +80,32 @@ export function PropertyCard({
           <TrustBadge score={property.trustScore} />
         </div>
 
-        {/* Favourite Button */}
-        <button
-          type="button"
-          onClick={() => setSaved((current) => !current)}
-          aria-label={
-            saved
-              ? "Remove from favourites"
-              : "Save to favourites"
-          }
-          aria-pressed={saved}
-          suppressHydrationWarning
-          className="absolute right-3 top-3 grid size-8 place-items-center rounded-full border border-border/70 bg-card/95 text-muted-foreground shadow-card transition-colors hover:text-warm"
-        >
-          <Heart
-            className={cn(
-              "size-4",
-              saved && "fill-warm text-warm",
+        {/* Save Property Button */}
+        {canSave && (
+          <button
+            type="button"
+            onClick={() => onSaveToggle?.(property.id)}
+            disabled={saving}
+            aria-label={
+              saved
+                ? "Remove from saved properties"
+                : "Save property"
+            }
+            aria-pressed={saved}
+            className="absolute right-3 top-3 grid size-9 place-items-center rounded-full border border-border/70 bg-card/95 text-muted-foreground shadow-card transition-colors hover:text-warm disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {saving ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Heart
+                className={cn(
+                  "size-4 transition-colors",
+                  saved && "fill-warm text-warm"
+                )}
+              />
             )}
-          />
-        </button>
+          </button>
+        )}
       </div>
 
       {/* Property Information */}
@@ -120,7 +134,7 @@ export function PropertyCard({
           </span>
         </div>
 
-        {/* Property Specs */}
+        {/* Property Specifications */}
         <dl className="mt-4 grid grid-cols-3 gap-2 rounded-xl bg-surface px-3 py-2.5 text-sm">
           <Spec
             icon={<BedDouble className="size-3.5" />}
@@ -156,6 +170,7 @@ export function PropertyCard({
   );
 }
 
+/* Property Specification */
 function Spec({
   icon,
   value,
@@ -174,6 +189,7 @@ function Spec({
   );
 }
 
+/* Property Card Loading Skeleton */
 export function PropertyCardSkeleton() {
   return (
     <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-card">

@@ -3,8 +3,14 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Bell, User as UserIcon, LogOut, LayoutDashboard, ChevronDown } from "lucide-react";
-import { toast } from "sonner";
+import {
+  Home,
+  Bell,
+  User as UserIcon,
+  LogOut,
+  LayoutDashboard,
+  ChevronDown,
+} from "lucide-react";import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
 type UserSession = {
@@ -94,9 +100,7 @@ export function Navbar() {
       : user?.role === "ADMIN"
       ? "/dashboard/admin"
       : "/dashboard/tenant";
-  if (pathname.startsWith("/dashboard")) {
-  return null;
-}
+
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/85 backdrop-blur-md">
@@ -112,50 +116,106 @@ export function Navbar() {
         </Link>
 
         {/* Navigation Pills */}
-        <nav className="hidden md:flex items-center gap-1.5 rounded-full bg-muted/80 p-1.5 border border-border/40 text-base font-medium">
+        {/* Role-Based Navigation */}
+
+{(() => {
+  const navigation = user?.role === "TENANT"
+    ? [
+        {
+          label: "Overview",
+          href: "/dashboard/tenant",
+        },
+        {
+          label: "Browse Properties",
+          href: "/properties",
+        },
+        {
+          label: "Saved Properties",
+          href: "/dashboard/tenant/saved",
+        },
+      ]
+    : user?.role === "LANDLORD"
+    ? [
+        {
+          label: "Overview",
+          href: "/dashboard/landlord",
+        },
+        {
+          label: "Add Property",
+          href: "/dashboard/landlord/add",
+        },
+        {
+          label: "Browse Properties",
+          href: "/properties",
+        },
+        {
+          label: "Rent Estimator",
+          href: "/rent-estimator",
+        },
+        {
+          label: "Search",
+          href: "/search",
+        },
+      ]
+    : user?.role === "ADMIN"
+    ? [
+        {
+          label: "Overview",
+          href: "/dashboard/admin",
+        },
+        {
+          label: "Properties",
+          href: "/dashboard/admin/properties",
+        },
+        {
+          label: "Trust Score",
+          href: "/dashboard/admin/trust-score",
+        },
+        {
+          label: "Search",
+          href: "/search",
+        },
+      ]
+    : [
+        {
+          label: "Home",
+          href: "/",
+        },
+        {
+          label: "Properties",
+          href: "/properties",
+        },
+        {
+          label: "Search",
+          href: "/search",
+        },
+      ];
+
+  return (
+    <nav className="hidden md:flex items-center gap-1.5 rounded-full bg-muted/80 p-1.5 border border-border/40 text-sm font-medium">
+      {navigation.map((item) => {
+        const isActive =
+          pathname === item.href ||
+          (item.href !== "/" &&
+            pathname.startsWith(`${item.href}/`));
+
+        return (
           <Link
-            href="/"
-            className={`rounded-full px-5 py-2 transition-colors ${
-              pathname === "/"
+            key={item.href}
+            href={item.href}
+            className={`whitespace-nowrap rounded-full px-4 py-2 transition-colors ${
+              isActive
                 ? "bg-card text-foreground shadow-xs font-semibold"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            Home
+            {item.label}
           </Link>
-          <Link
-            href="/properties"
-            className={`rounded-full px-5 py-2 transition-colors ${
-              pathname?.startsWith("/properties")
-                ? "bg-card text-foreground shadow-xs font-semibold"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Properties
-          </Link>
-          <Link
-            href="/search"
-            className={`rounded-full px-5 py-2 transition-colors ${
-              pathname === "/search"
-                ? "bg-card text-foreground shadow-xs font-semibold"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Search
-          </Link>
-          {user?.role === "LANDLORD" && (
-          <Link
-            href="/rent-estimator"
-            className={`rounded-full px-5 py-2 transition-colors ${
-              pathname === "/rent-estimator"
-                ? "bg-card text-foreground shadow-xs font-semibold"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            AI Rent Estimator
-          </Link>
-        )}
-        </nav>
+        );
+      })}
+    </nav>
+  );
+})()}
 
         {/* Right Actions */}
         <div className="flex items-center gap-4">

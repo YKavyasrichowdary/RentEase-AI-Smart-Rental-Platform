@@ -55,16 +55,22 @@ export async function GET() {
         createdAt: "desc",
       },
       include: {
-        property: {
-          include: {
-            images: {
-              orderBy: {
-                sortOrder: "asc",
-              },
-            },
-          },
+  property: {
+    include: {
+      images: {
+        orderBy: {
+          sortOrder: "asc",
         },
       },
+      assessments: {
+        orderBy: {
+          createdAt: "desc",
+        },
+        take: 1,
+      },
+    },
+  },
+},
     });
 
     return NextResponse.json(
