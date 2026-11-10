@@ -40,6 +40,7 @@ model User {
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
   property  Property[]
+  savedProperties SavedProperty[]
 }
 
 model Property {
@@ -70,6 +71,8 @@ model Property {
 
   owner  User            @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   images PropertyImage[]
+  assessments PropertyAssessment[]
+  savedBy SavedProperty[]
 
   @@index([ownerId])
   @@index([city])
@@ -87,5 +90,40 @@ model PropertyImage {
 
   property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
+  @@index([propertyId])
+}
+
+model PropertyAssessment {
+  id         String   @id @default(cuid())
+  propertyId String
+
+  trustScore Int
+  signals    Json
+
+  estimatedRentLow  Decimal @db.Decimal(12, 2)
+  estimatedRentMid  Decimal @db.Decimal(12, 2)
+  estimatedRentHigh Decimal @db.Decimal(12, 2)
+
+  listedRentOutsideRange Boolean @default(false)
+  propertyUpdatedAt DateTime
+  createdAt DateTime @default(now())
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  
+  @@index([propertyId])
+  @@index([trustScore])
+}
+
+model SavedProperty {
+  id         String   @id @default(cuid())
+  userId     String
+  propertyId String
+  createdAt  DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, propertyId])
+  @@index([userId])
   @@index([propertyId])
 }

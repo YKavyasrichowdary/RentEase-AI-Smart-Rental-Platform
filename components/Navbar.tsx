@@ -94,6 +94,9 @@ export function Navbar() {
       : user?.role === "ADMIN"
       ? "/dashboard/admin"
       : "/dashboard/tenant";
+  if (pathname.startsWith("/dashboard")) {
+  return null;
+}
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/85 backdrop-blur-md">
@@ -140,6 +143,7 @@ export function Navbar() {
           >
             Search
           </Link>
+          {user?.role === "LANDLORD" && (
           <Link
             href="/rent-estimator"
             className={`rounded-full px-5 py-2 transition-colors ${
@@ -150,6 +154,7 @@ export function Navbar() {
           >
             AI Rent Estimator
           </Link>
+        )}
         </nav>
 
         {/* Right Actions */}

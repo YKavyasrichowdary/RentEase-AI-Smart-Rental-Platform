@@ -97,3 +97,24 @@ export async function uploadPropertyImage(
     throw new Error("Unable to process property image.");
   }
 }
+
+
+export async function deletePropertyImage(
+  storageKey: string | null,
+) {
+  // Base64 images do not exist in Supabase Storage.
+  if (!storageKey) {
+    return;
+  }
+
+  const supabase = createSupabaseBrowserClient();
+
+  const { error } = await supabase.storage
+    .from(BUCKET_NAME)
+    .remove([storageKey]);
+
+  if (error) {
+    console.error("Supabase image deletion failed:", error);
+    throw new Error("Unable to delete the stored property image.");
+  }
+}

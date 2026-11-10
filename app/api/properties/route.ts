@@ -70,6 +70,7 @@ export async function POST(request: Request) {
       bedrooms,
       bathrooms,
       furnishing,
+      amenities
     } = body;
 
     // 3. Validate required fields
@@ -123,7 +124,25 @@ export async function POST(request: Request) {
     const numericArea = Number(area);
     const numericBedrooms = Number(bedrooms);
     const numericBathrooms = Number(bathrooms);
+    // Validate amenities
+if (
+  amenities !== undefined &&
+  (!Array.isArray(amenities) ||
+    !amenities.every((item) => typeof item === "string"))
+) {
+  return NextResponse.json(
+    { error: "Invalid property amenities." },
+    { status: 400 }
+  );
+}
 
+const normalizedAmenities = Array.isArray(amenities)
+  ? [...new Set(
+      amenities
+        .filter((item: string) => item.trim().length > 0)
+        .map((item: string) => item.trim())
+    )]
+  : [];
     if (
       !Number.isFinite(numericRent) ||
       numericRent <= 0 ||
@@ -196,8 +215,11 @@ export async function POST(request: Request) {
         bathrooms: numericBathrooms,
 
         furnishing: normalizedFurnishing,
+        amenities: normalizedAmenities,
 
-        status: typeof body.status === "string" && body.status ? body.status : "PUBLISHED",
+        // Every newly created property must start as a draft.
+       // Never accept status from the client.
+       status: "DRAFT",
       },
       select: {
         id: true,

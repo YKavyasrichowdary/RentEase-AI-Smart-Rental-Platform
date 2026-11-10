@@ -161,10 +161,10 @@ export function AssessmentPanel({
         {/* Disclaimer */}
         <div className="mt-5">
           <Disclaimer>
-            Trust Score is an AI-assisted risk
-            indicator, not proof of ownership.
-            Listings with elevated risk are
-            routed to the RentEase review queue.
+            Trust Score is an automated,
+            rule-based risk indicator, not proof
+            of ownership. Listings are subject
+            to Admin verification before publication.
           </Disclaimer>
         </div>
       </Panel>

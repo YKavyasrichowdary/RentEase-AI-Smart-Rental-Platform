@@ -14,7 +14,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { uploadPropertyImage } from "@/lib/supabase/storage";
 import {
   Select,
   SelectContent,
@@ -37,8 +36,6 @@ import {
   CITIES,
   FURNISHING,
   PROPERTY_TYPES,
-  estimateRent,
-  priceVerdict,
 } from "@/lib/rentease-data";
 
 import {
@@ -62,6 +59,14 @@ type Assessment = {
     mid: number;
   };
   listed: number;
+};
+
+type PropertyImageItem = {
+  preview: string;
+  file?: File;
+  id?: string;
+  url?: string;
+  storageKey?: string | null;
 };
 
 type PropertyForm = {
@@ -95,12 +100,7 @@ export default function AddPropertyClient() {
   const [amenities, setAmenities] =
     useState<string[]>([]);
 
-  const [images, setImages] = useState<
-  {
-    file: File;
-    preview: string;
-  }[]
->([]);
+  const [images, setImages] = useState<PropertyImageItem[]>([]);
 
 const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -108,25 +108,34 @@ const fileInputRef = useRef<HTMLInputElement>(null);
     useState<Record<string, string | undefined>>({});
 
   const [loading, setLoading] =
-    useState(false);
+  useState(false);
 
-  const [assessment, setAssessment] =
-    useState<Assessment | null>(null);
+// Stores the ID of the draft created in the database.
+const [propertyId, setPropertyId] =
+  useState<string | null>(null);
 
-  const set = (
-    key: keyof PropertyForm,
-    value: string,
-  ) => {
-    setForm((current) => ({
-      ...current,
-      [key]: value,
-    }));
+const [assessment, setAssessment] =
+  useState<Assessment | null>(null);
 
-    setErrors((current) => ({
-      ...current,
-      [key]: undefined,
-    }));
-  };
+  const [submitted, setSubmitted] = useState(false);
+
+    const set = (
+      key: keyof PropertyForm,
+      value: string,
+    ) => {
+      setForm((current) => ({
+        ...current,
+        [key]: value,
+      }));
+
+      // Property details changed: previous assessment is no longer valid.
+      setAssessment(null);
+
+      setErrors((current) => ({
+        ...current,
+        [key]: undefined,
+      }));
+    };
 
 const submit = async (
   event: React.FormEvent<HTMLFormElement>,
@@ -178,30 +187,34 @@ const submit = async (
   setAssessment(null);
 
   try {
-    const response = await fetch("/api/properties", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
+    const propertyPayload = {
+      title: form.title.trim(),
+      description: form.description.trim(),
+      type: form.type,
+      city: form.city,
+      locality: form.locality.trim(),
+      rent: Number(form.rent),
+      area: Number(form.area),
+      bedrooms: Number(form.beds),
+      bathrooms: Number(form.baths),
+      furnishing: form.furnishing,
+      amenities,
+      latitude: null,
+      longitude: null,
+    };
+
+    const response = await fetch(
+      propertyId
+        ? `/api/properties/${propertyId}`
+        : "/api/properties",
+      {
+        method: propertyId ? "PUT" : "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(propertyPayload),
       },
-      body: JSON.stringify({
-        title: form.title.trim(),
-        description: form.description.trim(),
-        type: form.type,
-        city: form.city,
-        locality: form.locality.trim(),
-
-        rent: Number(form.rent),
-        area: Number(form.area),
-        bedrooms: Number(form.beds),
-        bathrooms: Number(form.baths),
-        furnishing: form.furnishing,
-
-        // Coordinates will be added when
-        // location handling is implemented.
-        latitude: null,
-        longitude: null,
-      }),
-    });
+    );
 
     const data = await response.json();
 
@@ -211,133 +224,73 @@ const submit = async (
       );
     }
 
-    const propertyId = data.property.id;
+    const savedPropertyId: string = data.property.id;
+    setPropertyId(savedPropertyId);
 
-for (const [index, image] of images.entries()) {
-  const uploaded = await uploadPropertyImage(
-    image.file,
-    propertyId,
+
+const pendingImages = images.filter((image) => image.file);
+
+for (const [index, image] of pendingImages.entries()) {
+  if (!image.file) continue;
+
+  const formData = new FormData();
+  formData.append("file", image.file);
+  formData.append(
+    "sortOrder",
+    String(images.findIndex((item) => item === image))
   );
 
   const imageResponse = await fetch(
-    `/api/properties/${propertyId}/images`,
+    `/api/properties/${savedPropertyId}/images`,
     {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        url: uploaded.url,
-        storageKey: uploaded.storageKey,
-        sortOrder: index,
-      }),
-    },
+      body: formData,
+    }
   );
 
   const imageData = await imageResponse.json();
 
   if (!imageResponse.ok) {
     throw new Error(
-      imageData.error ||
-        `Unable to save image ${index + 1}.`,
+      imageData.message ||
+      `Unable to upload image ${index + 1}.`
     );
   }
+
+  setImages((current) =>
+    current.map((item) =>
+      item === image
+        ? {
+            preview: imageData.image.url,
+            id: imageData.image.id,
+            url: imageData.image.url,
+            storageKey: imageData.image.storageKey,
+          }
+        : item
+    )
+  );
 }
 
-    /*
-     * Property has now been saved in PostgreSQL.
-     *
-     * Keep the existing demo assessment temporarily.
-     * The real Trust Score and AI Rent Estimator
-     * will be connected in their respective modules.
-     */
 
-    const estimate = estimateRent({
-      city: form.city,
-      type: form.type,
-      beds: Number(form.beds),
-      baths: Number(form.baths),
-      area: Number(form.area),
-      furnishing: form.furnishing,
-      amenities,
-    });
-
-    const listed = Number(form.rent);
-
-    const verdict = priceVerdict(
-      listed,
-      estimate,
+    // Generate the assessment using the server-side API.
+    const assessmentResponse = await fetch(
+      `/api/properties/${savedPropertyId}/assessment`,
+      {
+        method: "POST",
+      },
     );
 
-    const completeness = Math.min(
-      100,
-      55 +
-        images.length * 9 +
-        amenities.length * 3 +
-        (form.description.length > 120
-          ? 12
-          : 4),
-    );
+    const assessmentData = await assessmentResponse.json();
 
-    const priceConsistency =
-      verdict.tone === "low"
-        ? 92
-        : verdict.tone === "moderate"
-          ? 74
-          : 52;
+    if (!assessmentResponse.ok) {
+      throw new Error(
+        assessmentData.error || "Unable to generate property assessment.",
+      );
+    }
 
-    const imageSimilarity =
-      images.length >= 3
-        ? 90
-        : images.length > 0
-          ? 76
-          : 60;
+    const serverAssessment = assessmentData.assessment;
 
-    const locationConsistency =
-      form.locality.length > 4
-        ? 90
-        : 72;
-
-    const infoQuality = Math.min(
-      96,
-      50 +
-        Math.round(
-          form.description.length / 6,
-        ),
-    );
-
-    const signals = [
-      {
-        label: "Listing completeness",
-        score: completeness,
-      },
-      {
-        label: "Price consistency",
-        score: priceConsistency,
-      },
-      {
-        label: "Image similarity",
-        score: imageSimilarity,
-      },
-      {
-        label: "Location consistency",
-        score: locationConsistency,
-      },
-      {
-        label:
-          "Listing information quality",
-        score: infoQuality,
-      },
-    ];
-
-    const score = Math.round(
-      signals.reduce(
-        (sum, signal) =>
-          sum + signal.score,
-        0,
-      ) / signals.length,
-    );
-
+    // Prepare explanations for the existing assessment panel.
     const issues: string[] = [];
 
     if (images.length < 3) {
@@ -346,9 +299,9 @@ for (const [index, image] of images.entries()) {
       );
     }
 
-    if (verdict.tone !== "low") {
+    if (serverAssessment.listedRentOutsideRange) {
       issues.push(
-        `Listed rent is ${verdict.label.toLowerCase()} for this configuration.`,
+        "Listed rent is outside the estimated range. Admin review will be required.",
       );
     }
 
@@ -358,26 +311,23 @@ for (const [index, image] of images.entries()) {
       );
     }
 
-    if (form.description.length < 140) {
+    if (form.description.trim().length < 140) {
       issues.push(
         "Expand the description with floor, facing and nearby landmarks.",
       );
     }
 
     setAssessment({
-      score,
-      signals,
+      score: serverAssessment.trustScore,
+      signals: serverAssessment.signals,
       issues,
-      estimate,
-      listed,
+      estimate: serverAssessment.estimate,
+      listed: Number(form.rent),
     });
-
-    toast.success(
-      "Property created successfully",
-      {
-        description: `Property saved as a draft — assessment score ${score}/100.`,
-      },
-    );
+    
+    toast.success("Property assessment completed", {
+      description: `Server-generated Trust Score: ${serverAssessment.trustScore}/100.`,
+    });
   } catch (error) {
     console.error(
       "Create property error:",
@@ -394,16 +344,57 @@ for (const [index, image] of images.entries()) {
   }
 };
 
-  const toggleAmenity = (
-    amenity: string,
-  ) => {
+const handleSubmitForReview = async () => {
+  if (!propertyId || !assessment) {
+    toast.error("Save the property and generate its assessment first.");
+    return;
+  }
+
+  if (assessment.score < 75) {
+    toast.error("Your Trust Score must be at least 75 to submit.");
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+    const response = await fetch(
+      `/api/properties/${propertyId}/submit`,
+      {
+        method: "POST",
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.error || "Unable to submit property for review."
+      );
+    }
+
+    setSubmitted(true);
+
+    toast.success("Property submitted for Admin review.");
+  } catch (error) {
+    toast.error(
+      error instanceof Error
+        ? error.message
+        : "Unable to submit property."
+    );
+  } finally {
+    setLoading(false);
+  }
+};
+
+  const toggleAmenity = (amenity: string) => {
     setAmenities((current) =>
       current.includes(amenity)
-        ? current.filter(
-            (item) => item !== amenity,
-          )
+        ? current.filter((item) => item !== amenity)
         : [...current, amenity],
     );
+
+    setAssessment(null);
   };
 
 const handleImageSelect = (
@@ -460,22 +451,66 @@ const handleImageSelect = (
     ...newImages,
   ]);
 
+  setAssessment(null);
+
   // Allows selecting the same file again later.
   event.target.value = "";
 };
-const removeImage = (index: number) => {
-  setImages((current) => {
-    const image = current[index];
+const removeImage = async (index: number) => {
+  const image = images[index];
 
-    if (image) {
-      URL.revokeObjectURL(image.preview);
+  if (!image) return;
+
+  // If the image is already saved, delete it from the backend first.
+  if (image.id) {
+    if (!propertyId) {
+      toast.error("Property ID is missing.");
+      return;
     }
 
-    return current.filter(
-      (_, imageIndex) =>
-        imageIndex !== index,
-    );
-  });
+    try {
+      const response = await fetch(
+        `/api/properties/${propertyId}/images`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            imageId: image.id,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.message || "Unable to delete image."
+        );
+      }
+
+      toast.success("Image deleted successfully.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to delete image."
+      );
+      return;
+    }
+  }
+
+  // Remove from the UI only after backend deletion succeeds.
+  if (image.file) {
+    URL.revokeObjectURL(image.preview);
+  }
+
+  setImages((current) =>
+    current.filter((_, imageIndex) => imageIndex !== index)
+  );
+
+  setAssessment(null);
 };
 
   return (
@@ -840,23 +875,44 @@ const removeImage = (index: number) => {
 </p>
           </FormField>
 
-          {/* Submit */}
-          <Button
-            type="submit"
-            size="lg"
-            className="w-full"
-            disabled={loading}
-          >
-            {loading ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <ShieldCheck className="size-4" />
-            )}
+          {/* Save Draft and Submit for Review */}
+{submitted ? (
+  <div className="rounded-lg border border-border bg-muted p-4 text-center">
+    <ShieldCheck className="mx-auto mb-2 size-6" />
+    <p className="font-semibold">Submitted for Admin Review</p>
+    <p className="mt-1 text-sm text-muted-foreground">
+      Your property is awaiting Admin approval.
+    </p>
+  </div>
+) : (
+  <div className="space-y-3">
+    <Button
+      type="submit"
+      size="lg"
+      className="w-full"
+      disabled={loading}
+    >
+      {loading ? (
+        <Loader2 className="size-4 animate-spin" />
+      ) : (
+        <ShieldCheck className="size-4" />
+      )}
+      {loading ? "Saving and generating assessment…" : "Save"}
+    </Button>
 
-            {loading
-              ? "Generating trust assessment…"
-              : "Submit & Generate Listing Trust Assessment"}
-          </Button>
+    {assessment && assessment.score >= 75 && (
+      <Button
+        type="button"
+        size="lg"
+        className="w-full"
+        disabled={loading || !propertyId}
+        onClick={handleSubmitForReview}
+      >
+        Submit for Review
+      </Button>
+    )}
+  </div>
+)}
         </form>
 
         {/* Assessment */}
